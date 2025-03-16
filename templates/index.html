@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raspberry Pi Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Raspberry Pi Dashboard</h1>
+        <h2>Weather</h2>
+        <p id="weather">Loading...</p>
+
+        <h2>Bus Times</h2>
+        <p id="bus_times">Loading...</p>
+    </div>
+
+    <script>
+        function fetchWeather() {
+            fetch('/weather')
+                .then(response => response.json())
+                .then(data => {
+                    const weatherContainer = document.getElementById('weather');
+                    weatherContainer.innerHTML = ""; // Clear previous data
+    
+                    data.forEach(entry => {
+                        const time = new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const temp = entry.temperature;
+                        const condition = entry.condition;
+    
+                        // Choose an appropriate weather icon
+                        const iconMap = {
+                            "clearsky": "☀️",
+                            "partlycloudy": "⛅",
+                            "cloudy": "☁️",
+                            "rain": "🌧️",
+                            "lightrain": "🌦️",
+                            "heavyrain": "🌧️🌧️",
+                            "snow": "❄️",
+                            "fog": "🌫️",
+                            "thunderstorm": "⛈️",
+                            "unknown": "❓"
+                        };
+    
+                        const icon = iconMap[condition] || "❓"; // Default to ❓ if unknown
+    
+                        // Create forecast entry
+                        const forecastEntry = document.createElement("p");
+                        forecastEntry.innerHTML = `${time}: ${icon} ${temp}°C`;
+                        weatherContainer.appendChild(forecastEntry);
+                    });
+                })
+                .catch(error => console.error('Error fetching weather:', error));
+        }
+
+        function fetchBusTimes() {
+            fetch('/bus_times')
+                .then(response => response.json())
+                .then(data => {
+                    const busContainer = document.getElementById('bus_times');
+                    busContainer.innerHTML = ""; // Clear previous data
+
+                    if (data.error) {
+                        busContainer.innerText = "Bus data unavailable";
+                        return;
+                    }
+
+                    data.forEach(entry => {
+                        const time = new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const destination = entry.destination;
+                        const line = entry.line;
+                        const transportMode = entry.mode === "bus" ? "🚌" : "🚋"; // Show icons based on mode
+
+                        const busEntry = document.createElement("p");
+                        busEntry.innerHTML = `${transportMode} Line ${line}: ${destination} at ${time}`;
+                        busContainer.appendChild(busEntry);
+                    });
+                })
+                .catch(error => console.error('Error fetching bus times:', error));
+        }
+
+
+        // Fetch data every 30 seconds
+        fetchWeather();
+        fetchBusTimes();
+        setInterval(() => {
+            fetchWeather();
+            fetchBusTimes();
+        }, 30000);
+    </script>
+</body>
+</html>
