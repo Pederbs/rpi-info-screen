@@ -1,110 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raspberry Pi Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Familiens Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+      background: white;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    /* Weather tables container: side by side */
+    .weather-tables-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      gap: 20px;
+    }
+    .weather-table {
+      border-collapse: collapse;
+      width: 48%;
+    }
+    .weather-table th, .weather-table td {
+      border: 1px solid #ddd;
+      padding: 5px;
+      font-size: 0.9em;
+    }
+    .weather-table th {
+      background: #f2f2f2;
+    }
+    /* Bus table container */
+    .bus-tables-container {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .bus-table {
+      border-collapse: collapse;
+      width: 23%;
+      margin: 5px;
+      background: #fff;
+    }
+    .bus-table th, .bus-table td {
+      border: 1px solid #ddd;
+      padding: 3px;
+      text-align: left;
+      font-size: 0.8em;
+    }
+    .bus-table th {
+      background: #f2f2f2;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Raspberry Pi Dashboard</h1>
-        <h2>Weather</h2>
-        <p id="weather">Loading...</p>
-
-        <h2>Bus Times</h2>
-        <p id="bus_times">Loading...</p>
+  <div class="container">
+    <h1>Familiens Infotavle</h1>
+    
+    <h2>Været</h2>
+    <div class="weather-tables-container" id="weather_tables_container">
+      <!-- Hourly and Daily weather tables will be injected here -->
     </div>
 
-    <script>
-        function fetchWeather() {
-            fetch('/weather')
-                .then(response => response.json())
-                .then(data => {
-                    const weatherContainer = document.getElementById('weather');
-                    weatherContainer.innerHTML = ""; // Clear previous data
-    
-                    data.forEach(entry => {
-                        const time = new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const temp = entry.temperature;
-                        const condition = entry.condition;
-    
-                        // Choose an appropriate weather icon
-                        const iconMap = {
-                            "clearsky": "☀️",
-                            "partlycloudy": "⛅",
-                            "cloudy": "☁️",
-                            "rain": "🌧️",
-                            "lightrain": "🌦️",
-                            "heavyrain": "🌧️🌧️",
-                            "snow": "❄️",
-                            "fog": "🌫️",
-                            "thunderstorm": "⛈️",
-                            "unknown": "❓"
-                        };
-    
-                        const icon = iconMap[condition] || "❓"; // Default to ❓ if unknown
-    
-                        // Create forecast entry
-                        const forecastEntry = document.createElement("p");
-                        forecastEntry.innerHTML = `${time}: ${icon} ${temp}°C`;
-                        weatherContainer.appendChild(forecastEntry);
-                    });
-                })
-                .catch(error => console.error('Error fetching weather:', error));
-        }
+    <h2>Busstabell</h2>
+    <div id="bus_tables_container" class="bus-tables-container"></div>
+  </div>
 
-        function fetchBusTimes() {
-            fetch('/bus_times')
-                .then(response => response.json())
-                .then(data => {
-                    const busContainer = document.getElementById('bus_times');
-                    busContainer.innerHTML = ""; // Clear previous data
+  <script>
+    // --- Weather Fetching: Next 24 Hours and Next 7 Days ---
+    function fetchWeather() {
+      fetch('/weather')
+        .then(response => response.json())
+        .then(data => {
+          const container = document.getElementById('weather_tables_container');
+          container.innerHTML = "";
 
-                    if (data.error) {
-                        busContainer.innerText = "Bus data unavailable";
-                        return;
-                    }
+          // Define iconMap once for both tables.
+          const iconMap = {
+            "clearsky": "☀️",
+            "partlycloudy": "⛅",
+            "cloudy": "☁️",
+            "rain": "🌧️",
+            "lightrain": "🌦️",
+            "heavyrain": "🌧️🌧️",
+            "snow": "❄️",
+            "fog": "🌫️",
+            "thunderstorm": "⛈️",
+            "unknown": "❓"
+          };
 
-                    data.forEach(entry => {
-                        const time = new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const destination = entry.destination;
-                        const line = entry.line;
-                        const transportMode = entry.mode === "bus" ? "🚌" : "🚋"; // Show icons based on mode
+          // ------ Hourly Forecast Table (Next 24 Hours) ------
+          // Filter to show every other forecast
+          const filteredHourly = data.hourly.filter((entry, index) => index % 2 === 0);
+          const hourlyTable = document.createElement("table");
+          hourlyTable.className = "weather-table";
 
-                        const busEntry = document.createElement("p");
-                        busEntry.innerHTML = `${transportMode} Line ${line}: ${destination} at ${time}`;
-                        busContainer.appendChild(busEntry);
-                    });
-                })
-                .catch(error => console.error('Error fetching bus times:', error));
-        }
+          let thead = document.createElement("thead");
+          let headerRow = document.createElement("tr");
+          ["Tid", "Temperatur", "Forrhold"].forEach(text => {
+            const th = document.createElement("th");
+            th.innerText = text;
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          hourlyTable.appendChild(thead);
 
+          let tbody = document.createElement("tbody");
+          filteredHourly.forEach(entry => {
+            const row = document.createElement("tr");
 
-        // Fetch data every 30 seconds
-        fetchWeather();
-        fetchBusTimes();
-        setInterval(() => {
-            fetchWeather();
-            fetchBusTimes();
-        }, 30000);
-    </script>
+            // Format time in 24-hour format
+            const forecastTime = new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            let timeCell = document.createElement("td");
+            timeCell.innerText = forecastTime;
+            row.appendChild(timeCell);
+
+            // Temperature cell
+            let tempCell = document.createElement("td");
+            tempCell.innerText = entry.temperature + "°C";
+            row.appendChild(tempCell);
+
+            // Condition cell with icon
+            let conditionCell = document.createElement("td");
+            conditionCell.innerText = iconMap[entry.condition] || "❓";
+            row.appendChild(conditionCell);
+
+            tbody.appendChild(row);
+          });
+          hourlyTable.appendChild(tbody);
+
+          // ------ Daily Forecast Table (Next 7 Days) ------
+          const dailyTable = document.createElement("table");
+          dailyTable.className = "weather-table";
+
+          thead = document.createElement("thead");
+          headerRow = document.createElement("tr");
+          ["Dag", "Termperatur", "Forrhold"].forEach(text => {
+            const th = document.createElement("th");
+            th.innerText = text;
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          dailyTable.appendChild(thead);
+
+          tbody = document.createElement("tbody");
+          data.daily.forEach(entry => {
+            const row = document.createElement("tr");
+
+            // Day cell: display weekday and day number
+            let dayCell = document.createElement("td");
+            const dayDate = new Date(entry.day);
+            dayCell.innerText = dayDate.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+            row.appendChild(dayCell);
+
+            // Temperature cell (one temperature)
+            let tempCell = document.createElement("td");
+            tempCell.innerText = entry.temperature + "°C";
+            row.appendChild(tempCell);
+
+            // Condition cell with icon
+            let conditionCell = document.createElement("td");
+            conditionCell.innerText = iconMap[entry.condition] || "❓";
+            row.appendChild(conditionCell);
+
+            tbody.appendChild(row);
+          });
+          dailyTable.appendChild(tbody);
+
+          // Append both tables to the container
+          container.appendChild(hourlyTable);
+          container.appendChild(dailyTable);
+        })
+        .catch(error => console.error('Error fetching weather:', error));
+    }
+
+    // --- Bus Times Fetching and Table Creation ---
+    const busStopGroups = [
+      { label: "Lerkendal 1 -> Sentrum", ids: ["NSR:Quay:73729"] },
+      { label: "Lerkendal 2 -> Oslo", ids: ["NSR:Quay:102720"] },
+      { label: "Lerkendal 3 -> Sentrum", ids: ["NSR:Quay:73421"] },
+      { label: "Lerkendal 4 -> Moholt", ids: ["NSR:Quay:73420"] }
+    ];
+
+    function fetchBusTimesForStop(stopId) {
+      return fetch('/bus_times?stop=' + encodeURIComponent(stopId))
+        .then(response => response.json());
+    }
+
+    function createBusTable(group) {
+      const table = document.createElement("table");
+      table.className = "bus-table";
+
+      const header = table.createTHead();
+      let headerRow = header.insertRow();
+      const titleCell = document.createElement("th");
+      titleCell.colSpan = 2; // Updated colspan for two columns
+      titleCell.innerText = group.label;
+      headerRow.appendChild(titleCell);
+
+      let colHeaderRow = table.insertRow();
+      // Only two columns: Route and Time
+      ["Rute", "Tid"].forEach(text => {
+        const th = document.createElement("th");
+        th.innerText = text;
+        colHeaderRow.appendChild(th);
+      });
+
+      const tbody = document.createElement("tbody");
+      table.appendChild(tbody);
+
+      Promise.all(group.ids.map(stopId => fetchBusTimesForStop(stopId)))
+        .then(results => {
+          let combined = [];
+          results.forEach(result => {
+            if (Array.isArray(result)) {
+              combined = combined.concat(result);
+            }
+          });
+          combined.sort((a, b) => new Date(a.time) - new Date(b.time));
+          combined.slice(0, 8).forEach(entry => {
+            const row = document.createElement("tr");
+            const routeCell = document.createElement("td");
+            // Use the combined field from the backend (the bus number and frontText)
+            routeCell.innerText = entry.line || "N/A";
+            const timeCell = document.createElement("td");
+
+            const departureTime = new Date(entry.time);
+            const now = new Date();
+            const diff = departureTime - now;
+            let displayTime = "";
+            if (diff > 0 && diff < 10 * 60 * 1000) {
+              const minutesLeft = Math.round(diff / (60 * 1000));
+              displayTime = minutesLeft + " min";
+            } else {
+              displayTime = departureTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            }
+            timeCell.innerText = displayTime;
+
+            row.appendChild(routeCell);
+            row.appendChild(timeCell);
+            tbody.appendChild(row);
+          });
+        })
+        .catch(error => console.error('Error fetching bus times for group:', group.label, error));
+
+      return table;
+    }
+
+    function fetchAndDisplayBusTimes() {
+      const container = document.getElementById('bus_tables_container');
+      container.innerHTML = "";
+      busStopGroups.forEach(group => {
+        const table = createBusTable(group);
+        container.appendChild(table);
+      });
+    }
+
+    // Initial fetch and periodic refresh every 30 seconds.
+    fetchWeather();
+    fetchAndDisplayBusTimes();
+    setInterval(() => {
+      fetchWeather();
+      fetchAndDisplayBusTimes();
+    }, 30000);
+  </script>
 </body>
 </html>
