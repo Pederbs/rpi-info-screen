@@ -21,9 +21,9 @@ Description=Auto-update and run Raspberry Pi Info Screen
 After=network.target
 
 [Service]
-User=peder
-WorkingDirectory=/home/peder/git/rpi-info-screen
-ExecStart=/bin/bash /home/peder/git/rpi-info-screen/auto_update.sh
+User=Familien
+WorkingDirectory=/home/Familien/git/rpi-info-screen
+ExecStart=/bin/bash /home/Familien/git/rpi-info-screen/auto_update.sh
 Restart=always
 
 [Install]
@@ -43,7 +43,7 @@ sudo systemctl start rpi-info-screen
 1. Make `start_browser.sh` executable:
 
 ```
-chmod +x /home/peder/git/rpi-info-screen/start_browser.sh
+chmod +x /home/Familien/git/rpi-info-screen/start_browser.sh
 ```
 
 2. Add It to ~/.config/lxsession/LXDE-pi/autostart
@@ -56,5 +56,5 @@ nano ~/.config/lxsession/LXDE-pi/autostart
 3. Add This Line to the File:
 
 ```
-@/home/peder/git/rpi-info-screen/start_browser.sh
+@/home/Familien/git/rpi-info-screen/start_browser.sh
 ```
